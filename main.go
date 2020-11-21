@@ -17,9 +17,10 @@ import (
 )
 
 var (
-	tsvPath    = flag.String("tsvPath", "", `Path to the "data.tsv" file that's inside the "title.basics.tsv.gz" archive`)
-	badgerPath = flag.String("badgerPath", "", "Path to the directory with the BadgerDB files")
-	limit      = flag.Int("limit", 0, "Limit the number of rows to process (excluding the header row)")
+	tsvPath      = flag.String("tsvPath", "", `Path to the "data.tsv" file that's inside the "title.basics.tsv.gz" archive`)
+	badgerPath   = flag.String("badgerPath", "", "Path to the directory with the BadgerDB files")
+	limit        = flag.Int("limit", 0, "Limit the number of rows to process (excluding the header row)")
+	skipEpisodes = flag.Bool("skipEpisodes", false, "Skip storing individual TV episodes")
 )
 
 var tabRune, _ = utf8.DecodeRuneInString("\t")
@@ -96,8 +97,8 @@ func main() {
 			log.Fatalf("Couldn't create Meta from record at row %v: %#v: %v\n", i, record, err)
 		}
 
-		// Skip TV episodes
-		if m.TitleType == "tvEpisode" {
+		// Skip TV episodes if configured
+		if *skipEpisodes && m.TitleType == "tvEpisode" {
 			continue
 		}
 
