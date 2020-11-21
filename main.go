@@ -27,7 +27,7 @@ var tabRune, _ = utf8.DecodeRuneInString("\t")
 // Meta is the metadata of a movie or TV show
 type Meta struct {
 	ID            string   `json:"id"`        // IMDb ID, including "tt" prefix
-	TitleType     string   `json:"titleType"` // E.g. movie, short, tvseries, tvepisode, video, etc.
+	TitleType     string   `json:"titleType"` // As of 2020-11-21 one of "movie", "short", "tvEpisode", "tvMiniSeries", "tvMovie", "tvSeries", "tvShort", "tvSpecial", "video", "videoGame"
 	PrimaryTitle  string   `json:"primaryTitle"`
 	OriginalTitle string   `json:"originalTitle"` // Only filled if different from the primary title
 	IsAdult       bool     `json:"isAdult"`
@@ -79,6 +79,7 @@ func main() {
 	}
 	defer db.Close()
 
+	storedCount := 0
 	start := time.Now()
 	for ; *limit == 0 || i <= *limit; i++ {
 		record, err := r.Read()
@@ -95,6 +96,11 @@ func main() {
 			log.Fatalf("Couldn't create Meta from record at row %v: %#v: %v\n", i, record, err)
 		}
 
+		// Skip TV episodes
+		if m.TitleType == "tvEpisode" {
+			continue
+		}
+
 		mBytes, err := json.Marshal(m)
 		if err != nil {
 			log.Fatalf("Couldn't marshal Meta to JSON at row %v: %+v: %v\n", i, m, err)
@@ -106,14 +112,15 @@ func main() {
 		if err != nil {
 			log.Fatalf("Couldn't write marshalled Meta to database at row %v: %+v: %v\n", i, m, err)
 		}
+		storedCount++
 
 		// Including the header, we've processed i+1 at this point, but it's only going to be incremented at the beginning of the next iteration.
 		if (i+1)%1000 == 0 {
-			log.Printf("Processed %v rows\n", i+1)
+			log.Printf("Processed %v rows, stored %v objects\n", i+1, storedCount)
 		}
 	}
 	end := time.Now()
-	log.Printf("Processing finished. Processed %v rows\n", i)
+	log.Printf("Processing finished. Processed %v rows, stored %v objects.\n", i, storedCount)
 	log.Printf("Processing took %v\n", end.Sub(start))
 }
 
