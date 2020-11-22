@@ -14,7 +14,7 @@ import (
 
 	"github.com/dgraph-io/badger/v2"
 	"go.etcd.io/bbolt"
-	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -116,9 +116,9 @@ func main() {
 			continue
 		}
 
-		mBytes, err := protojson.Marshal(m)
+		mBytes, err := proto.Marshal(m)
 		if err != nil {
-			log.Fatalf("Couldn't marshal Meta to JSON at row %v: %+v: %v\n", i, m, err)
+			log.Fatalf("Couldn't marshal Meta to protocol buffer at row %v: %+v: %v\n", i, m, err)
 		}
 
 		if *badgerPath != "" {
