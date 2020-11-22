@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/csv"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/dgraph-io/badger/v2"
 	"go.etcd.io/bbolt"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var (
@@ -29,19 +29,6 @@ var (
 	tabRune, _ = utf8.DecodeRuneInString("\t")
 	imdbBytes  = []byte("imdb") // Bucket name for bbolt
 )
-
-// Meta is the metadata of a movie or TV show
-type Meta struct {
-	ID            string   `json:"id"`        // IMDb ID, including "tt" prefix
-	TitleType     string   `json:"titleType"` // As of 2020-11-21 one of "movie", "short", "tvEpisode", "tvMiniSeries", "tvMovie", "tvSeries", "tvShort", "tvSpecial", "video", "videoGame"
-	PrimaryTitle  string   `json:"primaryTitle"`
-	OriginalTitle string   `json:"originalTitle"` // Only filled if different from the primary title
-	IsAdult       bool     `json:"isAdult"`
-	StartYear     int      `json:"startYear"` // Start year for TV shows, release year for movies. Can be 0.
-	EndYear       int      `json:"endYear"`   // Only relevant for TV shows
-	Runtime       int      `json:"runtime"`   // In minutes. Can be 0.
-	Genres        []string `json:"genres"`    // Up to three genres. Can be empty.
-}
 
 func main() {
 	flag.Parse()
@@ -125,22 +112,22 @@ func main() {
 		}
 
 		// Skip TV episodes if configured
-		if *skipEpisodes && m.TitleType == "tvEpisode" {
+		if *skipEpisodes && m.GetTitleType() == "tvEpisode" {
 			continue
 		}
 
-		mBytes, err := json.Marshal(m)
+		mBytes, err := protojson.Marshal(m)
 		if err != nil {
 			log.Fatalf("Couldn't marshal Meta to JSON at row %v: %+v: %v\n", i, m, err)
 		}
 
 		if *badgerPath != "" {
 			err = badgerDB.Update(func(txn *badger.Txn) error {
-				return txn.Set([]byte(m.ID), mBytes)
+				return txn.Set([]byte(m.GetId()), mBytes)
 			})
 		} else {
 			err = boltDB.Update(func(tx *bbolt.Tx) error {
-				return tx.Bucket(imdbBytes).Put([]byte(m.ID), mBytes)
+				return tx.Bucket(imdbBytes).Put([]byte(m.GetId()), mBytes)
 			})
 		}
 		if err != nil {
@@ -159,10 +146,10 @@ func main() {
 }
 
 // toMeta converts a TSV record into a Meta object.
-func toMeta(record []string) (Meta, error) {
-	meta := Meta{}
+func toMeta(record []string) (*Meta, error) {
+	meta := &Meta{}
 
-	meta.ID = record[0]
+	meta.Id = record[0]
 
 	meta.TitleType = record[1]
 
@@ -179,25 +166,25 @@ func toMeta(record []string) (Meta, error) {
 	if record[5] != "\\N" {
 		startYear, err := strconv.Atoi(record[5])
 		if err != nil {
-			return Meta{}, fmt.Errorf("couldn't convert string to int for startYear: %v", err)
+			return nil, fmt.Errorf("couldn't convert string to int for startYear: %v", err)
 		}
-		meta.StartYear = startYear
+		meta.StartYear = int32(startYear)
 	}
 
 	if record[6] != "\\N" {
 		endYear, err := strconv.Atoi(record[6])
 		if err != nil {
-			return Meta{}, fmt.Errorf("couldn't convert string to int for endYear: %v", err)
+			return nil, fmt.Errorf("couldn't convert string to int for endYear: %v", err)
 		}
-		meta.EndYear = endYear
+		meta.EndYear = int32(endYear)
 	}
 
 	if record[7] != "\\N" {
 		runtime, err := strconv.Atoi(record[7])
 		if err != nil {
-			return Meta{}, fmt.Errorf("couldn't convert string to int for runtime: %v", err)
+			return nil, fmt.Errorf("couldn't convert string to int for runtime: %v", err)
 		}
-		meta.Runtime = runtime
+		meta.Runtime = int32(runtime)
 	}
 
 	if record[8] != "\\N" {

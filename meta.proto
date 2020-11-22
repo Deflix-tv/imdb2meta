@@ -1,0 +1,16 @@
+syntax = "proto3";
+package imdb2meta;
+
+option go_package = "github.com/deflix-tv/imdb2meta/main";
+
+message Meta {
+    string id = 1; // IMDb ID, including "tt" prefix
+    string title_type = 2; // As of 2020-11-21 one of "movie", "short", "tvEpisode", "tvMiniSeries", "tvMovie", "tvSeries", "tvShort", "tvSpecial", "video", "videoGame"
+    string primary_title = 3;
+    string original_title = 4; // Only filled if different from the primary title
+    bool is_adult = 5;
+    int32 start_year = 6; // Start year for TV shows, release year for movies. Can be 0.
+    int32 end_year = 7; // Only relevant for TV shows
+    int32 runtime = 8; // In minutes. Can be 0.
+    repeated string genres = 9; // Up to three genres. Can be empty.
+}
