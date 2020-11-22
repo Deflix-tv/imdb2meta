@@ -14,16 +14,21 @@ import (
 	"unicode/utf8"
 
 	"github.com/dgraph-io/badger/v2"
+	"go.etcd.io/bbolt"
 )
 
 var (
 	tsvPath      = flag.String("tsvPath", "", `Path to the "data.tsv" file that's inside the "title.basics.tsv.gz" archive`)
 	badgerPath   = flag.String("badgerPath", "", "Path to the directory with the BadgerDB files")
+	boltPath     = flag.String("boltPath", "", "Path to the bbolt DB file")
 	limit        = flag.Int("limit", 0, "Limit the number of rows to process (excluding the header row)")
 	skipEpisodes = flag.Bool("skipEpisodes", false, "Skip storing individual TV episodes")
 )
 
-var tabRune, _ = utf8.DecodeRuneInString("\t")
+var (
+	tabRune, _ = utf8.DecodeRuneInString("\t")
+	imdbBytes  = []byte("imdb") // Bucket name for bbolt
+)
 
 // Meta is the metadata of a movie or TV show
 type Meta struct {
@@ -45,8 +50,10 @@ func main() {
 	if *tsvPath == "" {
 		log.Fatalln(`Missing CLI argument "-tsvPath"`)
 	}
-	if *badgerPath == "" {
-		log.Fatalln(`Missing CLI argument "-badgerPath"`)
+	if *badgerPath == "" && *boltPath == "" {
+		log.Fatalln(`Missing an argument for the DB: Either "-badgerPath" or "-boltPath".`)
+	} else if *badgerPath != "" && *boltPath != "" {
+		log.Fatalln(`You can only use either "-badgerPath" or "-boltPath", but not both at the same time`)
 	}
 
 	f, err := os.Open(*tsvPath)
@@ -72,13 +79,33 @@ func main() {
 		log.Fatalf("Couldn't read TSV row %v: %v\n", i, err)
 	}
 
-	opts := badger.DefaultOptions(*badgerPath).
-		WithLoggingLevel(badger.WARNING)
-	db, err := badger.Open(opts)
-	if err != nil {
-		log.Fatalf("Couldn't open BadgerDB: %v\n", err)
+	var badgerDB *badger.DB
+	var boltDB *bbolt.DB
+	if *badgerPath != "" {
+		opts := badger.DefaultOptions(*badgerPath).
+			WithLoggingLevel(badger.WARNING)
+		badgerDB, err = badger.Open(opts)
+		if err != nil {
+			log.Fatalf("Couldn't open BadgerDB: %v\n", err)
+		}
+		defer badgerDB.Close()
+	} else {
+		boltDB, err = bbolt.Open(*boltPath, 0666, nil)
+		if err != nil {
+			log.Fatalf("Couldn't open bbolt DB: %v\n", err)
+		}
+		defer boltDB.Close()
+		err = boltDB.Update(func(tx *bbolt.Tx) error {
+			if tx.Bucket(imdbBytes) == nil {
+				_, err := tx.CreateBucket(imdbBytes)
+				return err
+			}
+			return nil
+		})
+		if err != nil {
+			log.Fatalf("Couldn't create bucket in bbolt: %v\n", err)
+		}
 	}
-	defer db.Close()
 
 	storedCount := 0
 	start := time.Now()
@@ -107,9 +134,15 @@ func main() {
 			log.Fatalf("Couldn't marshal Meta to JSON at row %v: %+v: %v\n", i, m, err)
 		}
 
-		err = db.Update(func(txn *badger.Txn) error {
-			return txn.Set([]byte(m.ID), mBytes)
-		})
+		if *badgerPath != "" {
+			err = badgerDB.Update(func(txn *badger.Txn) error {
+				return txn.Set([]byte(m.ID), mBytes)
+			})
+		} else {
+			err = boltDB.Update(func(tx *bbolt.Tx) error {
+				return tx.Bucket(imdbBytes).Put([]byte(m.ID), mBytes)
+			})
+		}
 		if err != nil {
 			log.Fatalf("Couldn't write marshalled Meta to database at row %v: %+v: %v\n", i, m, err)
 		}
