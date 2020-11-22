@@ -3,9 +3,23 @@ package imdb2meta;
 
 option go_package = "github.com/deflix-tv/imdb2meta/main";
 
+// All title types in the title.basics.tsv.gz dataset as of 2020-11-21.
+enum TitleType {
+    MOVIE = 0;
+    SHORT = 1;
+    TV_EPISODE = 2;
+    TV_MINI_SERIES = 3;
+    TV_MOVIE = 4;
+    TV_SERIES = 5;
+    TV_SHORT = 6;
+    TV_SPECIAL = 7;
+    VIDEO = 8;
+    VIDEO_GAME = 9;
+}
+
 message Meta {
     string id = 1; // IMDb ID, including "tt" prefix
-    string title_type = 2; // As of 2020-11-21 one of "movie", "short", "tvEpisode", "tvMiniSeries", "tvMovie", "tvSeries", "tvShort", "tvSpecial", "video", "videoGame"
+    TitleType title_type = 2;
     string primary_title = 3;
     string original_title = 4; // Only filled if different from the primary title
     bool is_adult = 5;

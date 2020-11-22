@@ -112,7 +112,7 @@ func main() {
 		}
 
 		// Skip TV episodes if configured
-		if *skipEpisodes && m.GetTitleType() == "tvEpisode" {
+		if *skipEpisodes && m.GetTitleType() == TitleType_TV_EPISODE {
 			continue
 		}
 
@@ -151,7 +151,31 @@ func toMeta(record []string) (*Meta, error) {
 
 	meta.Id = record[0]
 
-	meta.TitleType = record[1]
+	// As of 2020-11-21 this can be "movie", "short", "tvEpisode", "tvMiniSeries", "tvMovie", "tvSeries", "tvShort", "tvSpecial", "video" or "videoGame"
+	switch record[1] {
+	case "movie":
+		meta.TitleType = TitleType_MOVIE
+	case "short":
+		meta.TitleType = TitleType_SHORT
+	case "tvEpisode":
+		meta.TitleType = TitleType_TV_EPISODE
+	case "tvMiniSeries":
+		meta.TitleType = TitleType_TV_MINI_SERIES
+	case "tvMovie":
+		meta.TitleType = TitleType_TV_MOVIE
+	case "tvSeries":
+		meta.TitleType = TitleType_TV_SERIES
+	case "tvShort":
+		meta.TitleType = TitleType_TV_SHORT
+	case "tvSpecial":
+		meta.TitleType = TitleType_TV_SPECIAL
+	case "video":
+		meta.TitleType = TitleType_VIDEO
+	case "videoGame":
+		meta.TitleType = TitleType_VIDEO_GAME
+	default:
+		return nil, fmt.Errorf("Unknown title type: %v", record[1])
+	}
 
 	meta.PrimaryTitle = record[2]
 
