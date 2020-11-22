@@ -4,7 +4,7 @@ A service for getting movie and TV show metadata for an IMDb ID via HTTP or gRPC
 
 ## Protocol buffer generation
 
-To re-generate the `meta.pg.go` file from the `meta.proto` file, run: `protoc --go_out=. --go_opt=paths=source_relative meta.proto`
+To re-generate the `meta.pg.go` file from the `meta.proto` file, run: `protoc -I="./protos" --go_out=./pb --go_opt=paths=source_relative meta.proto`
 
 ## ⚠ Warning
 

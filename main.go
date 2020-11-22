@@ -15,6 +15,8 @@ import (
 	"github.com/dgraph-io/badger/v2"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/deflix-tv/imdb2meta/pb"
 )
 
 var (
@@ -116,7 +118,7 @@ func main() {
 		}
 
 		// Skip TV episodes if configured
-		if *skipEpisodes && m.GetTitleType() == TitleType_TV_EPISODE {
+		if *skipEpisodes && m.GetTitleType() == pb.TitleType_TV_EPISODE {
 			continue
 		}
 
@@ -150,33 +152,33 @@ func main() {
 }
 
 // toMeta converts a TSV record into a Meta object.
-func toMeta(record []string, minimal bool) (*Meta, error) {
-	meta := &Meta{}
+func toMeta(record []string, minimal bool) (*pb.Meta, error) {
+	meta := &pb.Meta{}
 
 	meta.Id = record[0]
 
 	// As of 2020-11-21 this can be "movie", "short", "tvEpisode", "tvMiniSeries", "tvMovie", "tvSeries", "tvShort", "tvSpecial", "video" or "videoGame"
 	switch record[1] {
 	case "movie":
-		meta.TitleType = TitleType_MOVIE
+		meta.TitleType = pb.TitleType_MOVIE
 	case "short":
-		meta.TitleType = TitleType_SHORT
+		meta.TitleType = pb.TitleType_SHORT
 	case "tvEpisode":
-		meta.TitleType = TitleType_TV_EPISODE
+		meta.TitleType = pb.TitleType_TV_EPISODE
 	case "tvMiniSeries":
-		meta.TitleType = TitleType_TV_MINI_SERIES
+		meta.TitleType = pb.TitleType_TV_MINI_SERIES
 	case "tvMovie":
-		meta.TitleType = TitleType_TV_MOVIE
+		meta.TitleType = pb.TitleType_TV_MOVIE
 	case "tvSeries":
-		meta.TitleType = TitleType_TV_SERIES
+		meta.TitleType = pb.TitleType_TV_SERIES
 	case "tvShort":
-		meta.TitleType = TitleType_TV_SHORT
+		meta.TitleType = pb.TitleType_TV_SHORT
 	case "tvSpecial":
-		meta.TitleType = TitleType_TV_SPECIAL
+		meta.TitleType = pb.TitleType_TV_SPECIAL
 	case "video":
-		meta.TitleType = TitleType_VIDEO
+		meta.TitleType = pb.TitleType_VIDEO
 	case "videoGame":
-		meta.TitleType = TitleType_VIDEO_GAME
+		meta.TitleType = pb.TitleType_VIDEO_GAME
 	default:
 		return nil, fmt.Errorf("Unknown title type: %v", record[1])
 	}
