@@ -1,0 +1,109 @@
+package main
+
+import (
+	"flag"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"strconv"
+	"syscall"
+	"time"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/fiber/v2/middleware/recover"
+)
+
+var (
+	bindAddr = flag.String("bindAddr", "localhost", `Local interface address to bind to. "localhost" only allows access from the local host. "0.0.0.0" binds to all network interfaces.`)
+	port     = flag.Int("port", 8080, "Port to listen on")
+
+	badgerPath = flag.String("badgerPath", "", "Path to the directory with the BadgerDB files")
+	boltPath   = flag.String("boltPath", "", "Path to the bbolt DB file")
+)
+
+func main() {
+	flag.Parse()
+
+	// CLI argument check
+	if *badgerPath == "" && *boltPath == "" {
+		log.Fatalln(`Missing an argument for the DB: Either "-badgerPath" or "-boltPath".`)
+	} else if *badgerPath != "" && *boltPath != "" {
+		log.Fatalln(`You can only use either "-badgerPath" or "-boltPath", but not both at the same time`)
+	}
+
+	// Set up HTTP service
+
+	log.Println("Setting up HTTP service...")
+	app := fiber.New(fiber.Config{
+		ErrorHandler: func(c *fiber.Ctx, err error) error {
+			code := fiber.StatusInternalServerError
+			if e, ok := err.(*fiber.Error); ok {
+				code = e.Code
+				log.Printf("Fiber's error handler was called: %v\n", e)
+			} else {
+				log.Printf("Fiber's error handler was called: %v\n", err)
+			}
+			c.Set(fiber.HeaderContentType, fiber.MIMETextPlainCharsetUTF8)
+			return c.Status(code).SendString("An internal server error occurred")
+		},
+		DisableStartupMessage: true,
+		BodyLimit:             0,
+		ReadTimeout:           5 * time.Second,
+		// Docker stop only gives us 10s. We want to close all connections before that.
+		WriteTimeout: 9 * time.Second,
+		IdleTimeout:  9 * time.Second,
+	})
+	// Middlewares
+	app.Use(recover.New())
+	app.Use(logger.New())
+	// Endpoints
+	app.Get("/health", healthHandler)
+
+	// Start server
+
+	log.Println("Starting server...")
+	stopping := false
+	stoppingPtr := &stopping
+	addr := *bindAddr + ":" + strconv.Itoa(*port)
+	go func() {
+		if err := app.Listen(addr); err != nil {
+			if !*stoppingPtr {
+				log.Fatalf("Couldn't start server: %v\n", err)
+			} else {
+				log.Fatalf("Error in app.Listen() during server shutdown (probably context deadline expired before the server could shutdown cleanly): %v\n", err)
+			}
+		}
+	}()
+	healthURL := "http://"
+	if *bindAddr == "0.0.0.0" {
+		healthURL += "localhost"
+	} else {
+		healthURL += *bindAddr
+	}
+	healthURL += ":" + strconv.Itoa(*port) + "/health"
+	_, err := http.Get(healthURL) // Note: No timeout by default
+	if err != nil {
+		log.Fatalf("Couldn't send test request to server: %v\n", err)
+	}
+	log.Println("Server started successfully!")
+
+	// Graceful shutdown
+
+	c := make(chan os.Signal, 1)
+	// Accept SIGINT (Ctrl+C) and SIGTERM (`docker stop`)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	sig := <-c
+	log.Printf("Received signal %v, shutting down server...\n", sig)
+	*stoppingPtr = true
+	// Graceful shutdown, waiting for all current requests to finish without accepting new ones.
+	if err := app.Shutdown(); err != nil {
+		log.Fatalf("Error shutting down server: %v\n", err)
+	}
+	log.Println("Finished shutting down server")
+}
+
+var healthHandler fiber.Handler = func(c *fiber.Ctx) error {
+	return c.SendString("OK")
+}
