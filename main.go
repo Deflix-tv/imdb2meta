@@ -18,11 +18,15 @@ import (
 )
 
 var (
-	tsvPath      = flag.String("tsvPath", "", `Path to the "data.tsv" file that's inside the "title.basics.tsv.gz" archive`)
-	badgerPath   = flag.String("badgerPath", "", "Path to the directory with the BadgerDB files")
-	boltPath     = flag.String("boltPath", "", "Path to the bbolt DB file")
-	limit        = flag.Int("limit", 0, "Limit the number of rows to process (excluding the header row)")
+	tsvPath = flag.String("tsvPath", "", `Path to the "data.tsv" file that's inside the "title.basics.tsv.gz" archive`)
+
+	badgerPath = flag.String("badgerPath", "", "Path to the directory with the BadgerDB files")
+	boltPath   = flag.String("boltPath", "", "Path to the bbolt DB file")
+
+	limit = flag.Int("limit", 0, "Limit the number of rows to process (excluding the header row)")
+
 	skipEpisodes = flag.Bool("skipEpisodes", false, "Skip storing individual TV episodes")
+	minimal      = flag.Bool("minimal", false, "Only store minimal metadata (ID, type, title, release/start year)")
 )
 
 var (
@@ -106,7 +110,7 @@ func main() {
 			log.Fatalf("Couldn't read TSV row %v: %v\n", i, err)
 		}
 
-		m, err := toMeta(record)
+		m, err := toMeta(record, *minimal)
 		if err != nil {
 			log.Fatalf("Couldn't create Meta from record at row %v: %#v: %v\n", i, record, err)
 		}
@@ -146,7 +150,7 @@ func main() {
 }
 
 // toMeta converts a TSV record into a Meta object.
-func toMeta(record []string) (*Meta, error) {
+func toMeta(record []string, minimal bool) (*Meta, error) {
 	meta := &Meta{}
 
 	meta.Id = record[0]
@@ -183,7 +187,7 @@ func toMeta(record []string) (*Meta, error) {
 		meta.OriginalTitle = record[3]
 	}
 
-	if record[4] == "1" {
+	if !minimal && record[4] == "1" {
 		meta.IsAdult = true
 	}
 
@@ -195,7 +199,7 @@ func toMeta(record []string) (*Meta, error) {
 		meta.StartYear = int32(startYear)
 	}
 
-	if record[6] != "\\N" {
+	if !minimal && record[6] != "\\N" {
 		endYear, err := strconv.Atoi(record[6])
 		if err != nil {
 			return nil, fmt.Errorf("couldn't convert string to int for endYear: %v", err)
@@ -203,7 +207,7 @@ func toMeta(record []string) (*Meta, error) {
 		meta.EndYear = int32(endYear)
 	}
 
-	if record[7] != "\\N" {
+	if !minimal && record[7] != "\\N" {
 		runtime, err := strconv.Atoi(record[7])
 		if err != nil {
 			return nil, fmt.Errorf("couldn't convert string to int for runtime: %v", err)
@@ -211,7 +215,7 @@ func toMeta(record []string) (*Meta, error) {
 		meta.Runtime = int32(runtime)
 	}
 
-	if record[8] != "\\N" {
+	if !minimal && record[8] != "\\N" {
 		meta.Genres = strings.Split(record[8], ",")
 	}
 
