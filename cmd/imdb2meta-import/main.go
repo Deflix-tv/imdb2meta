@@ -76,7 +76,8 @@ func main() {
 	var boltDB *bbolt.DB
 	if *badgerPath != "" {
 		opts := badger.DefaultOptions(*badgerPath).
-			WithLoggingLevel(badger.WARNING)
+			WithLoggingLevel(badger.WARNING).
+			WithSyncWrites(false)
 		badgerDB, err = badger.Open(opts)
 		if err != nil {
 			log.Fatalf("Couldn't open BadgerDB: %v\n", err)
