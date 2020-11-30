@@ -37,6 +37,12 @@ var (
 )
 
 func main() {
+	// Workaround for exiting with 1 despite not using log.Fatal while still running deferred DB close calls.
+	exitCode := 1
+	defer func() {
+		os.Exit(exitCode)
+	}()
+
 	flag.Parse()
 
 	// CLI argument check
@@ -101,6 +107,9 @@ func main() {
 		}
 	}
 
+	// Here after we have opened the DB, don't use log.Fatal or os.Exit, as then the DB won't be closed and can end up in a corrupted state.
+	// So we log with Print and then return, leading to the deferred DB close and then deferred os.Exit(1) being called.
+
 	storedCount := 0
 	start := time.Now()
 	for ; *limit == 0 || i <= *limit; i++ {
@@ -110,12 +119,14 @@ func main() {
 			break
 		}
 		if err != nil {
-			log.Fatalf("Couldn't read TSV row %v: %v\n", i, err)
+			log.Printf("Couldn't read TSV row %v: %v\n", i, err)
+			return
 		}
 
 		m, err := toMeta(record, *minimal)
 		if err != nil {
-			log.Fatalf("Couldn't create Meta from record at row %v: %#v: %v\n", i, record, err)
+			log.Printf("Couldn't create Meta from record at row %v: %#v: %v\n", i, record, err)
+			return
 		}
 
 		// Skip TV episodes if configured
@@ -125,7 +136,8 @@ func main() {
 
 		mBytes, err := proto.Marshal(m)
 		if err != nil {
-			log.Fatalf("Couldn't marshal Meta to protocol buffer at row %v: %+v: %v\n", i, m, err)
+			log.Printf("Couldn't marshal Meta to protocol buffer at row %v: %+v: %v\n", i, m, err)
+			return
 		}
 
 		if *badgerPath != "" {
@@ -138,7 +150,8 @@ func main() {
 			})
 		}
 		if err != nil {
-			log.Fatalf("Couldn't write marshalled Meta to database at row %v: %+v: %v\n", i, m, err)
+			log.Printf("Couldn't write marshalled Meta to database at row %v: %+v: %v\n", i, m, err)
+			return
 		}
 		storedCount++
 
@@ -150,6 +163,7 @@ func main() {
 	end := time.Now()
 	log.Printf("Processing finished. Processed %v rows, stored %v objects.\n", i, storedCount)
 	log.Printf("Processing took %v\n", end.Sub(start))
+	exitCode = 0
 }
 
 // toMeta converts a TSV record into a Meta object.
