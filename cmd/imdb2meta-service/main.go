@@ -31,6 +31,12 @@ var (
 )
 
 func main() {
+	// Workaround for exiting with 1 despite not using log.Fatal while still running deferred DB close calls.
+	exitCode := 1
+	defer func() {
+		os.Exit(exitCode)
+	}()
+
 	flag.Parse()
 
 	// CLI argument check
@@ -71,6 +77,9 @@ func main() {
 		}
 	}
 
+	// Here after we have opened the DB, don't use log.Fatal or os.Exit, as then the DB won't be closed and can end up in a corrupted state.
+	// So we log with Print and then return, leading to the deferred DB close and then deferred os.Exit(1) being called.
+
 	// Set up HTTP service
 
 	log.Println("Setting up HTTP service...")
@@ -106,12 +115,15 @@ func main() {
 	stopping := false
 	stoppingPtr := &stopping
 	addr := *bindAddr + ":" + strconv.Itoa(*port)
+	listenErr := make(chan struct{})
 	go func() {
 		if err := app.Listen(addr); err != nil {
 			if !*stoppingPtr {
-				log.Fatalf("Couldn't start server: %v\n", err)
+				log.Printf("Couldn't start server: %v\n", err)
+				close(listenErr)
 			} else {
-				log.Fatalf("Error in app.Listen() during server shutdown (probably context deadline expired before the server could shutdown cleanly): %v\n", err)
+				log.Printf("Error in app.Listen() during server shutdown (probably context deadline expired before the server could shutdown cleanly): %v\n", err)
+				close(listenErr)
 			}
 		}
 	}()
@@ -124,9 +136,15 @@ func main() {
 	healthURL += ":" + strconv.Itoa(*port) + "/health"
 	_, err = http.Get(healthURL) // Note: No timeout by default
 	if err != nil {
-		log.Fatalf("Couldn't send test request to server: %v\n", err)
+		log.Printf("Couldn't send test request to server: %v\n", err)
+		return
 	}
-	log.Println("Server started successfully!")
+	select {
+	case <-listenErr:
+		return
+	case <-time.After(time.Second):
+		log.Println("Server started successfully!")
+	}
 
 	// Graceful shutdown
 
@@ -138,7 +156,13 @@ func main() {
 	*stoppingPtr = true
 	// Graceful shutdown, waiting for all current requests to finish without accepting new ones.
 	if err := app.Shutdown(); err != nil {
-		log.Fatalf("Error shutting down server: %v\n", err)
+		log.Printf("Error shutting down server: %v\n", err)
+		return
 	}
 	log.Println("Finished shutting down server")
+	select {
+	case <-listenErr:
+	default:
+		exitCode = 0
+	}
 }
