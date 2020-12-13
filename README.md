@@ -1,6 +1,6 @@
 # imdb2meta
 
-A service for getting movie and TV show metadata for an IMDb ID via HTTP, using the official IMDb datasets
+A service for getting movie and TV show metadata for an IMDb ID via HTTP or gRPC, using the official IMDb datasets
 
 ## Content
 
@@ -14,7 +14,7 @@ A service for getting movie and TV show metadata for an IMDb ID via HTTP, using 
 
 ## Usage
 
-First you need import the data of the IMDb dataset into a database, then you need to start the web service which is backed by the database and finally you can query it via HTTP.
+First you need import the data of the IMDb dataset into a database, then you need to start the web service which is backed by the database and finally you can query it via HTTP or gRPC.
 
 ### 1. Import data
 
@@ -68,15 +68,41 @@ Usage of imdb2meta-service:
         Local interface address to bind to. "localhost" only allows access from the local host. "0.0.0.0" binds to all network interfaces. (default "localhost")
   -boltPath string
         Path to the bbolt DB file
-  -port int
-        Port to listen on (default 8080)
+  -grpcPort int
+        Port to listen on for gRPC requests (default 8081)
+  -httpPort int
+        Port to listen on for HTTP requests (default 8080)
 ```
 
 ### 3. Query service
 
-After starting the web service you can query it via HTTP:
+After starting the web service you can query it via HTTP or gRPC:
 
-Example request: `curl "http://localhost:8080/meta/tt1254207`
+#### HTTP
+
+Example request: `curl "http://localhost:8080/meta/tt1254207"`
+
+Example response:
+
+```json
+{
+    "id": "tt1254207",
+    "titleType": "SHORT",
+    "primaryTitle": "Big Buck Bunny",
+    "startYear": 2008,
+    "runtime": 10,
+    "genres": [
+        "Animation",
+        "Comedy",
+        "Short"
+    ]
+}
+```
+
+#### gRPC
+
+Example request (using [grpcurl](https://github.com/fullstorydev/grpcurl)): `grpcurl -plaintext -d '{"id":"tt1254207"}' localhost:8081 imdb2meta.MetaFetcher/Get`  
+(In Windows/PowerShell you have to use `'{\"id\":\"tt1254207\"}'`)
 
 Example response:
 
@@ -97,7 +123,9 @@ Example response:
 
 ## Protocol buffer generation
 
-To re-generate the `meta.pg.go` file from the `meta.proto` file, run: `protoc -I="./protos" --go_out=./pb --go_opt=paths=source_relative meta.proto`
+To re-generate the `meta.pb.go` file from the `meta.proto` file, run: `protoc -I="./protos" --go_out=./pb --go_opt=paths=source_relative meta.proto`
+
+To re-generate the `service.pb.go` and `service_grpc.pb.go` files from the `service.proto` file, run: `protoc -I="./protos" --go_out=./pb --go_opt=paths=source_relative --go-grpc_out=./pb --go-grpc_opt=paths=source_relative service.proto`
 
 ## ⚠ Warning
 
