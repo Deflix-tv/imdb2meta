@@ -1,0 +1,14 @@
+syntax = "proto3";
+package imdb2meta;
+
+import "meta.proto";
+
+option go_package = "github.com/deflix-tv/imdb2meta/pb";
+
+service MetaFetcher {
+    rpc Get (MetaRequest) returns (Meta) {}
+}
+
+message MetaRequest {
+    string id = 1;
+}
