@@ -3,50 +3,25 @@ package main
 import (
 	"log"
 
-	"github.com/deflix-tv/imdb2meta/pb"
-	"github.com/dgraph-io/badger/v2"
 	"github.com/gofiber/fiber/v2"
-	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/deflix-tv/imdb2meta/pb"
 )
 
 var healthHandler fiber.Handler = func(c *fiber.Ctx) error {
 	return c.SendString("OK")
 }
 
-func createMetaHandler(badgerDB *badger.DB, boltDB *bbolt.DB) fiber.Handler {
+func createMetaHandler(metaStore *metaStore) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		id := c.Params("id")
 		if id == "" {
 			return c.SendStatus(fiber.StatusBadRequest)
 		}
 
-		var err error
-		var metaBytes []byte
-
-		if badgerDB != nil {
-			err = badgerDB.View(func(txn *badger.Txn) error {
-				item, err := txn.Get([]byte(id))
-				if err != nil {
-					if err == badger.ErrKeyNotFound {
-						return errNotFound
-					}
-					return err
-				}
-				metaBytes, err = item.ValueCopy(nil)
-				return err
-			})
-		} else {
-			err = boltDB.View(func(tx *bbolt.Tx) error {
-				txBytes := tx.Bucket(imdbBytes).Get([]byte(id))
-				if txBytes == nil {
-					return errNotFound
-				}
-				copy(metaBytes, txBytes)
-				return nil
-			})
-		}
+		metaBytes, err := metaStore.Get(id)
 		if err != nil {
 			if err == errNotFound {
 				log.Printf("Key not found in DB: %v\n", err)

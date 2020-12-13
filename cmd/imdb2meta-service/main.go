@@ -83,6 +83,11 @@ func main() {
 		}
 	}
 
+	metaStore := &metaStore{
+		badgerDB: badgerDB,
+		boltDB:   boltDB,
+	}
+
 	// Here after we have opened the DB, don't use log.Fatal or os.Exit, as then the DB won't be closed and can end up in a corrupted state.
 	// So we log with Print and then return, leading to the deferred DB close and then deferred os.Exit(1) being called.
 
@@ -113,7 +118,7 @@ func main() {
 	app.Use(logger.New())
 	// Endpoints
 	app.Get("/health", healthHandler)
-	app.Get("/meta/:id", createMetaHandler(badgerDB, boltDB))
+	app.Get("/meta/:id", createMetaHandler(metaStore))
 
 	// Start HTTP server
 
@@ -163,7 +168,7 @@ func main() {
 		return
 	}
 	s := grpc.NewServer()
-	metaServer := createGRPCserver(badgerDB, boltDB)
+	metaServer := createGRPCserver(metaStore)
 	pb.RegisterMetaFetcherServer(s, metaServer)
 	// Register reflection service on gRPC server for dynamic clients to discover services and types.
 	reflection.Register(s)
