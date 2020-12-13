@@ -139,6 +139,7 @@ func main() {
 		}
 	}()
 	// Send HTTP request to the health endpoint to ensure the server was started successfully
+	time.Sleep(time.Second)
 	healthURL := "http://"
 	if *bindAddr == "0.0.0.0" {
 		healthURL += "localhost"
