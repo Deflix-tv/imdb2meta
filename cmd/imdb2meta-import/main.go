@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/csv"
 	"flag"
 	"fmt"
@@ -141,19 +142,54 @@ func main() {
 		}
 
 		if *badgerPath != "" {
-			err = badgerDB.Update(func(txn *badger.Txn) error {
-				return txn.Set([]byte(m.GetId()), mBytes)
+			requiresUpdate := false
+			_ = badgerDB.View(func(txn *badger.Txn) error {
+				// err can be badger.ErrKeyNotFound and other errors. In any case we want to write to the DB.
+				item, err := txn.Get([]byte(m.GetId()))
+				if err != nil {
+					requiresUpdate = true
+					return nil
+				}
+				// Also write to the DB if the values differ
+				_ = item.Value(func(val []byte) error {
+					if !bytes.Equal(val, mBytes) {
+						requiresUpdate = true
+					}
+					return nil
+				})
+				return nil
 			})
+			if requiresUpdate {
+				err = badgerDB.Update(func(txn *badger.Txn) error {
+					storedCount++
+					return txn.Set([]byte(m.GetId()), mBytes)
+				})
+			}
 		} else {
-			err = boltDB.Update(func(tx *bbolt.Tx) error {
-				return tx.Bucket(imdbBytes).Put([]byte(m.GetId()), mBytes)
+			requiresUpdate := false
+			_ = boltDB.View(func(tx *bbolt.Tx) error {
+				txBytes := tx.Bucket(imdbBytes).Get([]byte(m.GetId()))
+				if txBytes == nil {
+					requiresUpdate = true
+					return nil
+				}
+				// Also write to the DB if the values differ
+				if !bytes.Equal(txBytes, mBytes) {
+					requiresUpdate = true
+				}
+				return nil
 			})
+			if requiresUpdate {
+				err = boltDB.Update(func(tx *bbolt.Tx) error {
+					storedCount++
+					return tx.Bucket(imdbBytes).Put([]byte(m.GetId()), mBytes)
+				})
+			}
 		}
 		if err != nil {
 			log.Printf("Couldn't write marshalled Meta to database at row %v: %+v: %v\n", i, m, err)
 			return
 		}
-		storedCount++
 
 		// Including the header, we've processed i+1 at this point, but it's only going to be incremented at the beginning of the next iteration.
 		if (i+1)%1000 == 0 {
