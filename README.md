@@ -74,6 +74,17 @@ Usage of imdb2meta-service:
         Port to listen on for HTTP requests (default 8080)
 ```
 
+#### Docker
+
+You can also run the service as Docker container.
+
+1. Update the image: `docker pull doingodswork/imdb2meta-service`
+2. Start the container: `docker run --name imdb2meta -v /path/to/badger:/data -p 8080:8080 -p 8081:8081 doingodswork/imdb2meta-service -badgerPath "/data"`
+   - > Note: `Ctrl-C` only detaches from the container. It doesn't stop it.
+   - When detached, you can attach again with `docker attach imdb2meta`
+3. To stop the container: `docker stop imdb2meta`
+4. To start the (still existing) container again: `docker start imdb2meta`
+
 ### 3. Query service
 
 After starting the web service you can query it via HTTP or gRPC:
