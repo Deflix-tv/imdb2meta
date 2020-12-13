@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"log"
 
 	"github.com/deflix-tv/imdb2meta/pb"
@@ -10,10 +9,6 @@ import (
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
-)
-
-var (
-	errNotFound = errors.New("Not found")
 )
 
 var healthHandler fiber.Handler = func(c *fiber.Ctx) error {
