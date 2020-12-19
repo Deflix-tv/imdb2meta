@@ -1,11 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
-	"encoding/csv"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"strconv"
@@ -33,8 +32,9 @@ var (
 )
 
 var (
-	tabRune, _ = utf8.DecodeRuneInString("\t")
-	imdbBytes  = []byte("imdb") // Bucket name for bbolt
+	tabRune, _      = utf8.DecodeRuneInString("\t")
+	imdbBytes       = []byte("imdb") // Bucket name for bbolt
+	expectedColumns = 9
 )
 
 func main() {
@@ -61,22 +61,12 @@ func main() {
 		log.Fatalf("Couldn't open TSV file: %v\n", err)
 	}
 
-	r := csv.NewReader(f)
-	r.Comma = tabRune
-	// ReuseRecord for better performance.
-	// Note: In this case the slices of the returned records when reading are backed by a reused array!
-	r.ReuseRecord = true
-	// Required for example for row 32542
-	r.LazyQuotes = true
+	s := bufio.NewScanner(f)
 
 	i := 1
 	// The first row is just the headers
-	_, err = r.Read()
-	if err == io.EOF {
+	if !s.Scan() || len(strings.Split(s.Text(), "\t")) != expectedColumns {
 		log.Fatalf("The TSV file doesn't seem to contain any data: %v\n", err)
-	}
-	if err != nil {
-		log.Fatalf("Couldn't read TSV row %v: %v\n", i, err)
 	}
 
 	var badgerDB *badger.DB
@@ -114,9 +104,7 @@ func main() {
 	storedCount := 0
 	start := time.Now()
 	for ; *limit == 0 || i <= *limit; i++ {
-		record, err := r.Read()
-		if err == io.EOF {
-			// No need to decrement i here
+		if !s.Scan() {
 			break
 		}
 		if err != nil {
@@ -124,6 +112,11 @@ func main() {
 			return
 		}
 
+		record := strings.Split(s.Text(), "\t")
+		if len(record) != expectedColumns {
+			log.Printf("The row didn't have the expected number of columns (row %v): %#v\n", i, record)
+			return
+		}
 		m, err := toMeta(record, *minimal)
 		if err != nil {
 			log.Printf("Couldn't create Meta from record at row %v: %#v: %v\n", i, record, err)

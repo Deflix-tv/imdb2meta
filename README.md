@@ -31,8 +31,8 @@ Steps:
    - Example: `imdb2meta-import -tsvPath "/home/john/Downloads/data.tsv" -badgerPath "/home/john/imdb2meta/badger"`
 
 > Note: The import takes a while (and much longer with bbolt than with BadgerDB), the process requires a lot of memory and the final DB size is fairly big.  
-> With a 6-core, 12-thread CPU and a mid-range SSD, an import of all data (5820284 rows as of 2020-11-21) into BadgerDB takes 2.5 minutes, up to 760 MB memory and the final DB size is 1.14 GB.  
-> When skipping TV episodes and storing only the minimal metadata it takes 45 seconds, up to 510 MB memory and the final DB size is 255 MB.
+> With a 6-core, 12-thread CPU and a mid-range SSD, an import of all data (7351639 rows as of 2020-11-21) into BadgerDB takes 4 minutes, up to 1.03 GB memory and the final DB size is 1.29 GB.  
+> When skipping TV episodes and storing only the minimal metadata it takes 1 minute and 5 seconds, up to 530 MB memory and the final DB size is 314 MB.
 
 CLI reference:
 
