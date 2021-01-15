@@ -201,7 +201,7 @@ func toMeta(record []string, minimal bool) (*pb.Meta, error) {
 
 	meta.Id = record[0]
 
-	// As of 2020-11-21 this can be "movie", "short", "tvEpisode", "tvMiniSeries", "tvMovie", "tvSeries", "tvShort", "tvSpecial", "video" or "videoGame"
+	// As of 2021-01-15 the following title types exist:
 	switch record[1] {
 	case "movie":
 		meta.TitleType = pb.TitleType_MOVIE
@@ -223,6 +223,12 @@ func toMeta(record []string, minimal bool) (*pb.Meta, error) {
 		meta.TitleType = pb.TitleType_VIDEO
 	case "videoGame":
 		meta.TitleType = pb.TitleType_VIDEO_GAME
+	case "audiobook":
+		meta.TitleType = pb.TitleType_AUDIOBOOK
+	case "radioSeries":
+		meta.TitleType = pb.TitleType_RADIO_SERIES
+	case "episode":
+		meta.TitleType = pb.TitleType_EPISODE
 	default:
 		return nil, fmt.Errorf("Unknown title type: %v", record[1])
 	}

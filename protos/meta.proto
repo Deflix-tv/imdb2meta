@@ -3,7 +3,7 @@ package imdb2meta;
 
 option go_package = "github.com/deflix-tv/imdb2meta/pb";
 
-// All title types in the title.basics.tsv.gz dataset as of 2020-11-21.
+// All title types in the title.basics.tsv.gz dataset as of 2021-01-15.
 enum TitleType {
     MOVIE = 0;
     SHORT = 1;
@@ -15,6 +15,9 @@ enum TitleType {
     TV_SPECIAL = 7;
     VIDEO = 8;
     VIDEO_GAME = 9;
+    AUDIOBOOK = 10;
+    RADIO_SERIES = 11;
+    EPISODE = 12;
 }
 
 message Meta {
