@@ -123,8 +123,10 @@ func main() {
 			return
 		}
 
-		// Skip TV episodes if configured
-		if *skipEpisodes && m.GetTitleType() == pb.TitleType_TV_EPISODE {
+		// Skip all episodes if configured
+		if *skipEpisodes &&
+			(m.GetTitleType() == pb.TitleType_TV_EPISODE ||
+				m.GetTitleType() == pb.TitleType_EPISODE) {
 			continue
 		}
 
