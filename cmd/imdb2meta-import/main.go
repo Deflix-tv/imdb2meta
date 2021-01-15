@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/dgraph-io/badger/v2"
 	"go.etcd.io/bbolt"
@@ -32,7 +31,6 @@ var (
 )
 
 var (
-	tabRune, _      = utf8.DecodeRuneInString("\t")
 	imdbBytes       = []byte("imdb") // Bucket name for bbolt
 	expectedColumns = 9
 )
