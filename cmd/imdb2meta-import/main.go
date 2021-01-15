@@ -27,6 +27,7 @@ var (
 	limit = flag.Int("limit", 0, "Limit the number of rows to process (excluding the header row)")
 
 	skipEpisodes = flag.Bool("skipEpisodes", false, "Skip storing individual TV episodes")
+	skipMisc     = flag.Bool("skipMisc", false, `Skip title types like "videoGame", "audiobook" and "radioSeries"`)
 	minimal      = flag.Bool("minimal", false, "Only store minimal metadata (ID, type, title, release/start year)")
 )
 
@@ -125,6 +126,13 @@ func main() {
 		if *skipEpisodes &&
 			(m.GetTitleType() == pb.TitleType_TV_EPISODE ||
 				m.GetTitleType() == pb.TitleType_EPISODE) {
+			continue
+		}
+		// Skip other stuff if configured
+		if *skipMisc &&
+			(m.GetTitleType() == pb.TitleType_VIDEO_GAME ||
+				m.GetTitleType() == pb.TitleType_AUDIOBOOK ||
+				m.GetTitleType() == pb.TitleType_RADIO_SERIES) {
 			continue
 		}
 

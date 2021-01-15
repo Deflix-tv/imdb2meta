@@ -48,6 +48,8 @@ Usage of imdb2meta-import:
         Only store minimal metadata (ID, type, title, release/start year)
   -skipEpisodes
         Skip storing individual TV episodes
+  -skipMisc
+        Skip title types like "videoGame", "audiobook" and "radioSeries"
   -tsvPath string
         Path to the "data.tsv" file that's inside the "title.basics.tsv.gz" archive
 ```
