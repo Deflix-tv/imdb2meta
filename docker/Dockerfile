@@ -3,7 +3,7 @@ FROM golang:1.15-alpine as builder
 WORKDIR /go/src/app/
 
 # Fill cache with source code of dependencies
-COPY go.mod .
+COPY go.mod go.sum ./
 RUN go mod download -x
 
 COPY . .
